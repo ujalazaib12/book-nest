@@ -1,9 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 import Layout from "../components/ui/Layout";
 import Toast from "../components/ui/Toast";
-import reviewsData from "../data/reviews.json";
 
 export default function BookDetails() {
   const { id } = useParams();
@@ -11,20 +10,59 @@ export default function BookDetails() {
   const { state, dispatch } = useContext(AppContext);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Find the book
-  const book = state.books.find((b) => b.id === parseInt(id));
+  // Find local book or state
+  // Even if we have it in state, we might not have the reviews if listing didn't include them (though our list API currently does)
+  // But let's rely on state first for speed, then maybe fetch if missing?
+  // Current requirement is just "connect frontend". 
+  // Backend returns Book with Reviews relation on getOne equivalent.
+  // Our getAll in BooksService ALSO returns relations: ['reviews'].
+  // So state.books should have reviews!
 
-  if (!book) {
+  const book = state.books.find((b) => b.id === parseInt(id));
+  /* 
+     If the user refreshes on this page, state.books is empty.
+     We should probably handle a "loading" state or fetch individual book here.
+     For now, let's just make it NOT crash if book is undefined, 
+     and maybe trigger a global fetch or local fetch?
+     Let's adding a specific useEffect to fetch if book is missing.
+  */
+
+  const [loadingBook, setLoadingBook] = useState(false);
+  const [fetchedBook, setFetchedBook] = useState(null);
+
+  useEffect(() => {
+    if (!book && !fetchedBook) {
+      setLoadingBook(true);
+      fetch(`http://localhost:3000/api/books/${id}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Book not found");
+          return res.json();
+        })
+        .then(data => {
+          setFetchedBook(data);
+          setLoadingBook(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingBook(false);
+        });
+    }
+  }, [id, book]);
+
+  const activeBook = book || fetchedBook;
+
+  if (loadingBook) return <Layout><div className="p-10 text-center">Loading book...</div></Layout>;
+
+  if (!activeBook) {
     return (
       <Layout>
-        <h1 className="text-red-600 text-xl font-bold">Book not found.</h1>
+        <h1 className="text-red-600 text-xl font-bold p-10">Book not found (ID: {id})</h1>
       </Layout>
     );
   }
 
-  // Fetch reviews for this book
-  const reviewBlock = reviewsData.find((r) => r.bookId === book.id);
-  const reviews = reviewBlock ? reviewBlock.reviews : [];
+  // Use reviews from the book object itself (thanks to relations)
+  const reviews = activeBook.reviews || [];
 
   // ------------------------------
   // Reserve Book Handler
@@ -33,7 +71,7 @@ export default function BookDetails() {
     dispatch({
       type: "ADD_TO_RESERVATIONS",
       payload: {
-        ...book,
+        ...activeBook,
         status: "Reserved",
         pickupDate: null,
         dueDate: null,
@@ -49,7 +87,7 @@ export default function BookDetails() {
   const handleWishlist = () => {
     dispatch({
       type: "ADD_TO_WISHLIST",
-      payload: book,
+      payload: activeBook,
     });
 
     setToastMessage("Book Added to Wishlist!");
@@ -62,32 +100,32 @@ export default function BookDetails() {
         {/* Top Section - Cover + Basic Info */}
         <div className="flex flex-col md:flex-row gap-6">
           <img
-            src={book.cover}
-            alt={book.title}
+            src={activeBook.cover}
+            alt={activeBook.title}
             className="aspect-3/4 object-cover rounded"
           />
         </div>
 
         <div className="flex flex-col gap-6">
           <div>
-            <h1 className="text-4xl font-bold text-[#002379]">{book.title}</h1>
-            <p className="italic">{book.author}</p>
+            <h1 className="text-4xl font-bold text-[#002379]">{activeBook.title}</h1>
+            <p className="italic">{activeBook.author}</p>
 
             {/* Category, Rating, Copies */}
-            <p className="mt-2"><strong>Category:</strong> {book.category}</p>
-            <p><strong>Rating:</strong> ⭐ {book.rating}</p>
-            <p><strong>Copies Available:</strong> {book.copies}</p>
+            <p className="mt-2"><strong>Category:</strong> {activeBook.category}</p>
+            <p><strong>Rating:</strong> ⭐ {activeBook.rating}</p>
+            <p><strong>Copies Available:</strong> {activeBook.copies}</p>
 
             {/* Expected Return Date — ONLY if Borrowed */}
-            {book.status === "Borrowed" && (
+            {activeBook.status === "Borrowed" && (
               <p className="text-red-600 mt-2">
-                <strong>Expected Return Date:</strong> {book.dueDate}
+                <strong>Expected Return Date:</strong> {activeBook.dueDate}
               </p>
             )}
 
             {/* Buttons */}
             <div className="mt-6 flex gap-3">
-              {book.status === "Available" ? (
+              {activeBook.status === "Available" ? (
                 <button
                   onClick={handleReserve}
                   className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -108,16 +146,16 @@ export default function BookDetails() {
           {/* Book Information Section */}
           <div className="mt-8 bg-[#FF9F66] rounded-2xl p-4">
             <h2 className="text-xl font-semibold mb-3">Book Information</h2>
-            <p><strong>ISBN:</strong> {book.isbn}</p>
-            <p><strong>Publisher:</strong> {book.publisher}</p>
-            <p><strong>Publication Year:</strong> {book.year}</p>
-            <p><strong>Page Count:</strong> {book.pages}</p>
+            <p><strong>ISBN:</strong> {activeBook.isbn}</p>
+            <p><strong>Publisher:</strong> {activeBook.publisher}</p>
+            <p><strong>Publication Year:</strong> {activeBook.year}</p>
+            <p><strong>Page Count:</strong> {activeBook.pages}</p>
           </div>
 
           {/* Description */}
           <div className="mt-8 bg-[#FF9F66] rounded-2xl p-4">
             <h2 className="text-xl font-semibold mb-3">Description</h2>
-            <p className="text-gray-700">{book.description}</p>
+            <p className="text-gray-700">{activeBook.description}</p>
           </div>
 
           {/* User Reviews */}

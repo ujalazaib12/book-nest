@@ -22,17 +22,21 @@ export default function Home() {
     const loadBooks = async () => {
       try {
         dispatch({ type: "SET_LOADING", payload: true });
-        await new Promise((res) => setTimeout(res, 500));
 
-        if (state.books.length === 0) {
-          dispatch({ type: "SET_BOOKS", payload: bookData });
+        // Fetch from Backend
+        const response = await fetch("http://localhost:3000/api/books");
+        if (!response.ok) {
+          throw new Error("Failed to fetch books");
         }
+        const data = await response.json();
 
+        dispatch({ type: "SET_BOOKS", payload: data });
         dispatch({ type: "SET_LOADING", payload: false });
       } catch (error) {
+        console.error(error);
         dispatch({
           type: "SET_ERROR",
-          payload: "Failed to load books. Please try again.",
+          payload: "Failed to load books. Please check backend connection.",
         });
         dispatch({ type: "SET_LOADING", payload: false });
       }
