@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { BooksModule } from './books/books.module';
-import { ReviewsModule } from './reviews/reviews.module';
-import { Book } from './books/book.entity';
-import { Review } from './reviews/review.entity';
+import { AppController } from './app.controller.js';
+import { AppService } from './app.service.js';
+import { BooksModule } from './books/books.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
 
 @Module({
   imports: [
@@ -18,7 +16,7 @@ import { Review } from './reviews/review.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
-        entities: [Book, Review],
+        autoLoadEntities: true,
         synchronize: true, // Auto-create tables (dev only)
         ssl: {
           rejectUnauthorized: false,
@@ -32,4 +30,4 @@ import { Review } from './reviews/review.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
