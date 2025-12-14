@@ -1,0 +1,27 @@
+[
+  {
+    "bookId": 1,
+    "reviews": [
+      {
+        "user": "Ali Raza",
+        "rating": 5,
+        "comment": "Life-changing and very practical."
+      },
+      {
+        "user": "Mehak Noor",
+        "rating": 4,
+        "comment": "Great strategies, easy to follow."
+      }
+    ]
+  },
+  {
+    "bookId": 2,
+    "reviews": [
+      {
+        "user": "Sara Khan",
+        "rating": 5,
+        "comment": "Beautiful and inspiring story!"
+      }
+    ]
+  }
+]
